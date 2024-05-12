@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Recommendations</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #000000, #008000); /* Black to Green gradient */
+            color: #fff;
+            min-height: 100vh; /* Set minimum height to full viewport height */
+            position: relative; /* Ensure footer sticks to the bottom */
+        }
+        header {
+            background-color: #000000;
+            color: #fff;
+            padding: 20px 0;
+            text-align: center;
+        }
+        header img {
+            height: 50px;
+            width: auto;
+        }
+        footer {
+            background-color: #000000;
+            color: #fff;
+            padding: 20px 0;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .container {
+            margin-top: 20px;
+            margin-bottom: 120px; /* Adjust margin to accommodate footer */
+        }
+        .song-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .song-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .similarity-score {
+            font-size: 1rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <img src="logo.png" alt="Logo">
+    <h1>Song Recommendations</h1>
+</header>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Random Songs</h2>
+            <div id="random-songs-list">
+                <!-- Random songs will be displayed here -->
+                {% for song in random_songs %}
+                <div class="song-card">
+                    <h3 class="song-title">{{ song }}</h3>
+                    <button class="btn btn-primary song-btn" data-song="{{ song }}">Play</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <h2>Selected Song</h2>
+            <div id="selected-song-card" class="song-card">
+                <h3 class="song-title" id="selected-song-title">No song selected</h3>
+                <audio controls id="audio-player" style="display: none;">Your browser does not support the audio element.</audio>
+            </div>
+            <h2 class="mt-4">Recommendations</h2>
+            <div id="recommendations-list">
+                <div class="song-card">
+                    <h3 class="song-title">No recommendations yet</h3>
+                </div>
+            </div>
+            <h2 class="mt-4">Nearest Neighbors</h2>
+            <div id="neighbors-list">
+                <div class="song-card">
+                    <h3 class="song-title">No neighbors yet</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <p>&copy; 2024 Your Company. All rights reserved.</p>
+</footer>
+
+
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('.song-btn').click(function () {
+            var song = $(this).data('song');
+            var songTitle = $(this).closest('.song-card').find('.song-title').text();
+            $('#selected-song-title').text(songTitle);
+            $('#audio-player').attr('src', '/audio/000/' + song);
+            $('#audio-player').trigger('play');
+            $('#selected-song-card').data('song', song);
+            $.ajax({
+                type: 'POST',
+                url: '/recommendations',
+                data: {'selected_song': song},
+                success: function (response) {
+                    displayRecommendations(response);
+                }
+            });
+            $.ajax({
+                type: 'POST',
+                url: '/nearest_neighbors',
+                data: {'selected_song': song},
+                success: function (response) {
+                    displayNeighbors(response);
+                }
+            });
+        });
+
+        $('#audio-player').on('ended', function () {
+            var selectedSong = $('#selected-song-card').data('song');
+            var nextSong = $('.song-btn[data-song="' + selectedSong + '"]').closest('.song-card').next().find('.song-btn').data('song');
+            if (nextSong) {
+                $('.song-btn[data-song="' + nextSong + '"]').click();
+            }
+        });
+
+        function displayRecommendations(recommendations) {
+            $('#recommendations-list').empty();
+            $.each(recommendations, function (index, recommendation) {
+                var similarityScore = (recommendation[1] * 100).toFixed(2);
+                $('#recommendations-list').append('<div class="song-card"><h3 class="song-title">' + recommendation[0] + '</h3><p class="similarity-score">Similarity Score: ' + similarityScore + '%</p></div>');
+            });
+        }
+
+        function displayNeighbors(neighbors) {
+            $('#neighbors-list').empty();
+            $.each(neighbors, function (index, song) {
+                $('#neighbors-list').append('<div class="song-card"><h3 class="song-title">' + song + '</h3></div>');
+            });
+        }
+    });
+</script>
+</body>
+</html>
